@@ -1,5 +1,5 @@
 -- Module definition ==========================================================
-local MiniGit = {}
+local MiniJJ = {}
 local H = {}
 
 --- Module setup
@@ -8,16 +8,16 @@ local H = {}
 --- - Sets up auto enabling in every normal buffer for an actual file on disk.
 --- - Creates |:Git| command.
 ---
----@param config table|nil Module config table. See |MiniGit.config|.
+---@param config table|nil Module config table. See |MiniJJ.config|.
 ---
 ---@usage >lua
 ---   require('mini.git').setup() -- use default config
 ---   -- OR
 ---   require('mini.git').setup({}) -- replace {} with your config table
 --- <
-MiniGit.setup = function(config)
+MiniJJ.setup = function(config)
   -- Export module
-  _G.MiniGit = MiniGit
+  _G.MiniJJ = MiniJJ
 
   -- Setup config
   config = H.setup_config(config)
@@ -26,7 +26,7 @@ MiniGit.setup = function(config)
   H.apply_config(config)
 
   -- Ensure proper Git executable
-  local exec = config.job.git_executable
+  local exec = config.job.jj_executable
   H.has_git = vim.fn.executable(exec) == 1
   if not H.has_git then H.notify('There is no `' .. exec .. '` executable', 'WARN') end
 
@@ -35,9 +35,6 @@ MiniGit.setup = function(config)
   for _, buf_id in ipairs(vim.api.nvim_list_bufs()) do
     H.auto_enable({ buf = buf_id })
   end
-
-  -- Create user commands
-  H.create_user_commands()
 end
 
 --stylua: ignore
@@ -47,7 +44,7 @@ end
 ---
 --- `config.job` contains options for customizing CLI executions.
 ---
---- `job.git_executable` defines a full path to Git executable. Default: "git".
+--- `job.jj_executable` defines a full path to Git executable. Default: "jj".
 ---
 --- `job.timeout` is a duration (in ms) from job start until it is forced to stop.
 --- Default: 30000.
@@ -60,11 +57,11 @@ end
 --- one of "horizontal", "vertical", "tab", or "auto". Value "auto" uses |:vertical|
 --- if only 'mini.git' buffers are shown in the tabpage and |:tab| otherwise.
 --- Default: "auto".
-MiniGit.config = {
+MiniJJ.config = {
   -- General CLI execution
   job = {
     -- Path to Git executable
-    git_executable = 'git',
+    jj_executable = 'jj',
 
     -- Timeout (in ms) for each job before force quit
     timeout = 30000,
@@ -77,22 +74,22 @@ MiniGit.config = {
 ---
 --- Tracking is done by reacting to changes in file content or file's repository
 --- in the form of keeping buffer data up to date. The data can be used via:
---- - |MiniGit.get_buf_data()|. See its help for a list of actually tracked data.
---- - `vim.b.minigit_summary` (table) and `vim.b.minigit_summary_string` (string)
+--- - |MiniJJ.get_buf_data()|. See its help for a list of actually tracked data.
+--- - `vim.b.minijj_summary` (table) and `vim.b.minijj_summary_string` (string)
 ---   buffer-local variables which are more suitable for statusline.
----   `vim.b.minigit_summary_string` contains information about HEAD, file status,
----   and in progress action (see |MiniGit.get_buf_data()| for more details).
----   See |MiniGit-examples| for how it can be tweaked and used in statusline.
+---   `vim.b.minijj_summary_string` contains information about HEAD, file status,
+---   and in progress action (see |MiniJJ.get_buf_data()| for more details).
+---   See |MiniJJ-examples| for how it can be tweaked and used in statusline.
 ---
 --- Note: this function is called automatically for all new normal buffers.
 --- Use it explicitly if buffer was disabled.
 ---
---- `User` event `MiniGitUpdated` is triggered whenever tracking data is updated.
---- Note that not all data listed in |MiniGit.get_buf_data()| can be present (yet)
+--- `User` event `MiniJJUpdated` is triggered whenever tracking data is updated.
+--- Note that not all data listed in |MiniJJ.get_buf_data()| can be present (yet)
 --- at the point of event being triggered.
 ---
 ---@param buf_id __git_buf_id
-MiniGit.enable = function(buf_id)
+MiniJJ.enable = function(buf_id)
   buf_id = H.validate_buf_id(buf_id)
 
   -- Don't enable more than once
@@ -111,16 +108,17 @@ end
 --- Disable Git tracking in buffer
 ---
 ---@param buf_id __git_buf_id
-MiniGit.disable = function(buf_id)
+MiniJJ.disable = function(buf_id)
   buf_id = H.validate_buf_id(buf_id)
 
   local buf_cache = H.cache[buf_id]
   if buf_cache == nil then return end
   H.cache[buf_id] = nil
+  --lel
 
   -- Cleanup
   pcall(vim.api.nvim_del_augroup_by_id, buf_cache.augroup)
-  vim.b[buf_id].minigit_summary, vim.b[buf_id].minigit_summary_string = nil, nil
+  vim.b[buf_id].minijj_summary, vim.b[buf_id].minijj_summary_string = nil, nil
 
   -- - Unregister buffer from repo watching with possibly more cleanup
   local repo = buf_cache.repo
@@ -137,10 +135,10 @@ end
 --- Enable if disabled, disable if enabled.
 ---
 ---@param buf_id __git_buf_id
-MiniGit.toggle = function(buf_id)
+MiniJJ.toggle = function(buf_id)
   buf_id = H.validate_buf_id(buf_id)
-  if H.is_buf_enabled(buf_id) then return MiniGit.disable(buf_id) end
-  return MiniGit.enable(buf_id)
+  if H.is_buf_enabled(buf_id) then return MiniJJ.disable(buf_id) end
+  return MiniJJ.enable(buf_id)
 end
 
 --- Get buffer data
@@ -157,7 +155,7 @@ end
 ---     For detached HEAD it is "HEAD".
 ---   - <status> `(string)` - two character file status as returned by `git status`.
 ---     (bisect, merge, etc.). Can be a combination of those separated by ",".
-MiniGit.get_buf_data = function(buf_id)
+MiniJJ.get_buf_data = function(buf_id)
   buf_id = H.validate_buf_id(buf_id)
   local buf_cache = H.cache[buf_id]
   if buf_cache == nil then return nil end
@@ -166,13 +164,13 @@ MiniGit.get_buf_data = function(buf_id)
     root = buf_cache.root,
     head = buf_cache.head,
     head_name = buf_cache.head_name,
-    status = buf_cache.status,
+    -- status = buf_cache.status,
   }
 end
 
 -- Helper data ================================================================
 -- Module default config
-H.default_config = MiniGit.config
+H.default_config = MiniJJ.config
 
 -- Cache per enabled buffer. Values are tables with fields:
 -- - <augroup> - identifier of augroup defining buffer behavior.
@@ -200,16 +198,16 @@ H.setup_config = function(config)
   config = vim.tbl_deep_extend('force', vim.deepcopy(H.default_config), config or {})
 
   H.check_type('job', config.job, 'table')
-  H.check_type('job.git_executable', config.job.git_executable, 'string')
+  H.check_type('job.jj_executable', config.job.jj_executable, 'string')
   H.check_type('job.timeout', config.job.timeout, 'number')
 
   return config
 end
 
-H.apply_config = function(config) MiniGit.config = config end
+H.apply_config = function(config) MiniJJ.config = config end
 
 H.create_autocommands = function()
-  local gr = vim.api.nvim_create_augroup('MiniGit', {})
+  local gr = vim.api.nvim_create_augroup('MiniJJ', {})
 
   local au = function(event, pattern, callback, desc)
     vim.api.nvim_create_autocmd(event, { group = gr, pattern = pattern, callback = callback, desc = desc })
@@ -220,13 +218,13 @@ H.create_autocommands = function()
   au('BufEnter', '*', H.auto_enable, 'Enable Git tracking')
 end
 
-H.is_disabled = function(buf_id) return vim.g.minigit_disable == true or vim.b[buf_id or 0].minigit_disable == true end
+H.is_disabled = function(buf_id) return vim.g.minijj_disable == true or vim.b[buf_id or 0].minijj_disable == true end
 
 -- Autocommands ---------------------------------------------------------------
 H.auto_enable = vim.schedule_wrap(function(data)
   local buf = data.buf
   if not (vim.api.nvim_buf_is_loaded(buf) and vim.bo[buf].buftype == '' and vim.bo[buf].buflisted) then return end
-  MiniGit.enable(data.buf)
+  MiniJJ.enable(data.buf)
 end)
 
 -- Command --------------------------------------------------------------------
@@ -248,7 +246,7 @@ end
 H.is_buf_enabled = function(buf_id) return H.cache[buf_id] ~= nil and vim.api.nvim_buf_is_valid(buf_id) end
 
 H.setup_buf_behavior = function(buf_id)
-  local augroup = vim.api.nvim_create_augroup('MiniGitBuffer' .. buf_id, { clear = true })
+  local augroup = vim.api.nvim_create_augroup('MiniJJBuffer' .. buf_id, { clear = true })
   H.cache[buf_id].augroup = augroup
 
   vim.api.nvim_buf_attach(buf_id, false, {
@@ -265,31 +263,31 @@ H.setup_buf_behavior = function(buf_id)
     -- Called when buffer is unloaded from memory (`:h nvim_buf_detach_event`),
     -- **including** `:edit` command. Together with auto enabling it makes
     -- `:edit` command serve as "restart".
-    on_detach = function() MiniGit.disable(buf_id) end,
+    on_detach = function() MiniJJ.disable(buf_id) end,
   })
 
   local reset_if_enabled = vim.schedule_wrap(function(data)
     if not H.is_buf_enabled(data.buf) then return end
-    MiniGit.disable(data.buf)
-    MiniGit.enable(data.buf)
+    MiniJJ.disable(data.buf)
+    MiniJJ.enable(data.buf)
   end)
   local bufrename_opts = { group = augroup, buffer = buf_id, callback = reset_if_enabled, desc = 'Reset on rename' }
   -- NOTE: `BufFilePost` does not look like a proper event, but it (yet) works
   vim.api.nvim_create_autocmd('BufFilePost', bufrename_opts)
 
-  local buf_disable = function() MiniGit.disable(buf_id) end
+  local buf_disable = function() MiniJJ.disable(buf_id) end
   local bufdelete_opts = { group = augroup, buffer = buf_id, callback = buf_disable, desc = 'Disable on delete' }
   vim.api.nvim_create_autocmd('BufDelete', bufdelete_opts)
 end
 
 -- Tracking -------------------------------------------------------------------
 H.start_tracking = function(buf_id, path)
-  local command = H.git_cmd({ 'rev-parse', '--path-format=absolute', '--git-dir', '--show-toplevel' })
+  local command = H.jj_cmd({ 'workspace', 'root' })
 
   -- If path is not in Git, disable buffer but make sure that it will not try
   -- to re-attach until buffer is properly disabled
   local on_not_in_git = function()
-    if H.is_buf_enabled(buf_id) then MiniGit.disable(buf_id) end
+    if H.is_buf_enabled(buf_id) then MiniJJ.disable(buf_id) end
     H.cache[buf_id] = {}
   end
 
@@ -299,19 +297,20 @@ H.start_tracking = function(buf_id, path)
     H.cli_err_notify(code, out, err)
 
     -- Update buf data
-    local repo, root = string.match(out, '^(.-)\n(.*)$')
-    if repo == nil or root == nil then return H.notify('No initial data for buffer ' .. buf_id, 'WARN') end
+    local root = out
+    if root == nil then return H.notify('No initial data for buffer ' .. buf_id, 'WARN') end
+    local repo = root .. '/.jj'
     H.update_buf_data(buf_id, { repo = repo, root = root })
 
     -- Set up repo watching to react to Git index changes
     H.setup_repo_watch(buf_id, repo)
 
     -- Set up worktree watching to react to file changes
-    H.setup_path_watch(buf_id)
+    -- H.setup_path_watch(buf_id)
 
     -- Immediately update buffer tracking data
     H.update_git_head(root, { buf_id })
-    H.update_git_status(root, { buf_id })
+    -- H.update_git_status(root, { buf_id })
   end)
 
   H.cli_run(command, vim.fn.fnamemodify(path, ':h'), on_done)
@@ -356,14 +355,14 @@ H.teardown_repo_watch = function(repo)
   pcall(vim.loop.timer_stop, H.repos[repo].timer)
 end
 
-H.setup_path_watch = function(buf_id, repo)
-  if not H.is_buf_enabled(buf_id) then return end
-
-  local on_file_change = function(data) H.update_git_status(H.cache[buf_id].root, { buf_id }) end
-  local opts =
-  { desc = 'Update Git status', group = H.cache[buf_id].augroup, buffer = buf_id, callback = on_file_change }
-  vim.api.nvim_create_autocmd({ 'BufWritePost', 'FileChangedShellPost' }, opts)
-end
+-- H.setup_path_watch = function(buf_id, repo)
+--   if not H.is_buf_enabled(buf_id) then return end
+--
+--   -- local on_file_change = function(data) H.update_git_status(H.cache[buf_id].root, { buf_id }) end
+--   -- local opts =
+--   -- { desc = 'Update Git status', group = H.cache[buf_id].augroup, buffer = buf_id, callback = on_file_change }
+--   -- vim.api.nvim_create_autocmd({ 'BufWritePost', 'FileChangedShellPost' }, opts)
+-- end
 
 H.on_repo_change = function(repo)
   if H.repos[repo] == nil then return end
@@ -378,7 +377,7 @@ H.on_repo_change = function(repo)
       root_bufs[root] = bufs
     else
       repo_bufs[buf_id] = nil
-      MiniGit.disable(buf_id)
+      MiniJJ.disable(buf_id)
     end
   end
 
@@ -386,25 +385,37 @@ H.on_repo_change = function(repo)
   for root, bufs in pairs(root_bufs) do
     H.update_git_head(root, bufs)
     -- Status could have also changed as it depends on the index
-    H.update_git_status(root, bufs)
+    -- H.update_git_status(root, bufs)
   end
 end
 
 H.update_git_head = function(root, bufs)
-  local command = H.git_cmd({ 'rev-parse', 'HEAD', '--abbrev-ref', 'HEAD' })
+  local command = H.jj_cmd({
+    'log', '-r', '@', '--no-graph', '--ignore-working-copy',
+    '--limit', '1', '--template',
+    "pad_end(9,change_id.shortest(8))++change_id.shortest(8).rest()"
+  })
 
   local on_done = vim.schedule_wrap(function(code, out, err)
     -- Ensure proper data
     if code ~= 0 then return end
     H.cli_err_notify(code, out, err)
 
-    local head, head_name = string.match(out, '^(.-)\n(.*)$')
-    if head == nil or head_name == nil then
+    if out == '' then
       return H.notify('Could not parse HEAD data for root ' .. root .. '\n' .. out, 'WARN')
     end
 
+    local words = {}
+    for word in string.gmatch(out, "%S+") do
+      table.insert(words, word)
+    end
+
+    local rest = words[2]
+    local unique_prefix = words[1]:sub(1, 8 - #rest)
+    -- local rest_truncated = rest:sub(1, 4 - #unique_prefix)
+
     -- Update data for all buffers from target `root`
-    local new_data = { head = head, head_name = head_name }
+    local new_data = { head = unique_prefix, head_name = rest }
     for _, buf_id in ipairs(bufs) do
       H.update_buf_data(buf_id, new_data)
     end
@@ -416,73 +427,74 @@ H.update_git_head = function(root, bufs)
   H.cli_run(command, root, on_done)
 end
 
-H.update_git_status = function(root, bufs)
-  --stylua: ignore
-  local command = H.git_cmd({
-    -- NOTE: Use `--no-optional-locks` to reduce conflicts with other Git tasks
-    '--no-optional-locks', 'status',
-    '--verbose', '--untracked-files=all', '--ignored', '--porcelain', '-z',
-    '--',
-  })
-  local root_len, path_data = string.len(root), {}
-  for _, buf_id in ipairs(bufs) do
-    -- Use paths relative to the root as in `git status --porcelain` output
-    local rel_path = H.get_buf_realpath(buf_id):sub(root_len + 2)
-    table.insert(command, rel_path)
-    -- Completely not modified paths should be the only ones missing in the
-    -- output. Use this status as default.
-    path_data[rel_path] = { status = '  ', buf_id = buf_id }
-  end
-
-  local on_done = vim.schedule_wrap(function(code, out, err)
-    if code ~= 0 then return end
-    H.cli_err_notify(code, out, err)
-
-    -- Parse CLI output, which is separated by `\0` to not escape "bad" paths
-    for _, l in ipairs(vim.split(out, '\0')) do
-      local status, rel_path = string.match(l, '^(..) (.*)$')
-      if path_data[rel_path] ~= nil then path_data[rel_path].status = status end
-    end
-
-    -- Update data for all buffers
-    for _, data in pairs(path_data) do
-      local new_data = { status = data.status }
-      H.update_buf_data(data.buf_id, new_data)
-    end
-
-    -- Redraw statusline to have possible statusline component up to date
-    H.redrawstatus()
-  end)
-
-  H.cli_run(command, root, on_done)
-end
+-- H.update_git_status = function(root, bufs)
+--   --stylua: ignore
+--   local command = H.jj_cmd({
+--     -- NOTE: Use `--no-optional-locks` to reduce conflicts with other Git tasks
+--     '--no-optional-locks', 'status',
+--     '--verbose', '--untracked-files=all', '--ignored', '--porcelain', '-z',
+--     '--',
+--   })
+--   local root_len, path_data = string.len(root), {}
+--   for _, buf_id in ipairs(bufs) do
+--     -- Use paths relative to the root as in `git status --porcelain` output
+--     local rel_path = H.get_buf_realpath(buf_id):sub(root_len + 2)
+--     table.insert(command, rel_path)
+--     -- Completely not modified paths should be the only ones missing in the
+--     -- output. Use this status as default.
+--     path_data[rel_path] = { status = '  ', buf_id = buf_id }
+--   end
+--
+--   local on_done = vim.schedule_wrap(function(code, out, err)
+--     if code ~= 0 then return end
+--     H.cli_err_notify(code, out, err)
+--
+--     -- Parse CLI output, which is separated by `\0` to not escape "bad" paths
+--     for _, l in ipairs(vim.split(out, '\0')) do
+--       local status, rel_path = string.match(l, '^(..) (.*)$')
+--       if path_data[rel_path] ~= nil then path_data[rel_path].status = status end
+--     end
+--
+--     -- Update data for all buffers
+--     for _, data in pairs(path_data) do
+--       local new_data = { status = data.status }
+--       H.update_buf_data(data.buf_id, new_data)
+--     end
+--
+--     -- Redraw statusline to have possible statusline component up to date
+--     H.redrawstatus()
+--   end)
+--
+--   H.cli_run(command, root, on_done)
+-- end
 
 H.update_buf_data = function(buf_id, new_data)
   if not H.is_buf_enabled(buf_id) then return end
 
-  local summary = vim.b[buf_id].minigit_summary or {}
+  local summary = vim.b[buf_id].minijj_summary or {}
   for key, val in pairs(new_data) do
     H.cache[buf_id][key], summary[key] = val, val
   end
-  vim.b[buf_id].minigit_summary = summary
+  vim.b[buf_id].minijj_summary = summary
 
   -- Format summary string
   local head = summary.head_name or ''
-  head = head == 'HEAD' and summary.head:sub(1, 7) or head
+  -- head = head == 'HEAD' and summary.head:sub(1, 7) or head
 
   local summary_string = head
-  local status = summary.status or ''
-  if status ~= '  ' and status ~= '' then summary_string = string.format('%s (%s)', head, status) end
-  vim.b[buf_id].minigit_summary_string = summary_string
+  -- local status = summary.status or ''
+  -- if status ~= '  ' and status ~= '' then summary_string = string.format('%s (%s)', head, status) end
+  vim.b[buf_id].minijj_summary_string = summary_string
 
   -- Trigger dedicated event with target current buffer (for proper `data.buf`)
-  vim.api.nvim_buf_call(buf_id, function() H.trigger_event('MiniGitUpdated') end)
+  vim.api.nvim_buf_call(buf_id, function() H.trigger_event('MiniJJUpdated') end)
 end
 
 -- CLI ------------------------------------------------------------------------
-H.git_cmd = function(args)
+H.jj_cmd = function(args)
   -- Use '-c gc.auto=0' to disable `stderr` "Auto packing..." messages
-  return { MiniGit.config.job.git_executable, '-c', 'gc.auto=0', unpack(args) }
+  -- return { MiniJJ.config.job.jj_executable, '-c', 'gc.auto=0', unpack(args) }
+  return { MiniJJ.config.job.jj_executable, unpack(args) }
 end
 
 H.cli_run = function(command, cwd, on_done, opts)
@@ -520,9 +532,9 @@ H.cli_run = function(command, cwd, on_done, opts)
     if H.skip_timeout or not process:is_active() then return end
     H.notify('PROCESS REACHED TIMEOUT', 'WARN')
     on_exit(1)
-  end, MiniGit.config.job.timeout)
+  end, MiniJJ.config.job.timeout)
 
-  if is_sync then vim.wait(MiniGit.config.job.timeout + 10, function() return is_done end, 1) end
+  if is_sync then vim.wait(MiniJJ.config.job.timeout + 10, function() return is_done end, 1) end
   return res
 end
 
@@ -545,14 +557,14 @@ H.cli_err_notify = function(code, out, err)
 end
 
 -- Utilities ------------------------------------------------------------------
-H.error = function(msg) error('(mini.git) ' .. msg, 0) end
+H.error = function(msg) error('(mini.jj) ' .. msg, 0) end
 
 H.check_type = function(name, val, ref, allow_nil)
   if type(val) == ref or (ref == 'callable' and vim.is_callable(val)) or (allow_nil and val == nil) then return end
   H.error(string.format('`%s` should be %s, not %s', name, ref, type(val)))
 end
 
-H.notify = function(msg, level_name) vim.notify('(mini.git) ' .. msg, vim.log.levels[level_name]) end
+H.notify = function(msg, level_name) vim.notify('(mini.jj) ' .. msg, vim.log.levels[level_name]) end
 
 H.trigger_event = function(event_name, data) vim.api.nvim_exec_autocmds('User', { pattern = event_name, data = data }) end
 
@@ -562,4 +574,4 @@ H.get_buf_realpath = function(buf_id) return vim.loop.fs_realpath(vim.api.nvim_b
 H.redrawstatus = function() vim.cmd('redrawstatus') end
 if vim.api.nvim__redraw ~= nil then H.redrawstatus = function() vim.api.nvim__redraw({ statusline = true }) end end
 
-return MiniGit
+return MiniJJ
