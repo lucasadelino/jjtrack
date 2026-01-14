@@ -114,7 +114,6 @@ MiniJJ.disable = function(buf_id)
   local buf_cache = H.cache[buf_id]
   if buf_cache == nil then return end
   H.cache[buf_id] = nil
-  --lel
 
   -- Cleanup
   pcall(vim.api.nvim_del_augroup_by_id, buf_cache.augroup)
@@ -305,12 +304,8 @@ H.start_tracking = function(buf_id, path)
     -- Set up repo watching to react to Git index changes
     H.setup_repo_watch(buf_id, repo)
 
-    -- Set up worktree watching to react to file changes
-    -- H.setup_path_watch(buf_id)
-
     -- Immediately update buffer tracking data
     H.update_git_head(root, { buf_id })
-    -- H.update_git_status(root, { buf_id })
   end)
 
   H.cli_run(command, vim.fn.fnamemodify(path, ':h'), on_done)
@@ -354,15 +349,6 @@ H.teardown_repo_watch = function(repo)
   pcall(vim.loop.fs_event_stop, H.repos[repo].fs_event)
   pcall(vim.loop.timer_stop, H.repos[repo].timer)
 end
-
--- H.setup_path_watch = function(buf_id, repo)
---   if not H.is_buf_enabled(buf_id) then return end
---
---   -- local on_file_change = function(data) H.update_git_status(H.cache[buf_id].root, { buf_id }) end
---   -- local opts =
---   -- { desc = 'Update Git status', group = H.cache[buf_id].augroup, buffer = buf_id, callback = on_file_change }
---   -- vim.api.nvim_create_autocmd({ 'BufWritePost', 'FileChangedShellPost' }, opts)
--- end
 
 H.on_repo_change = function(repo)
   if H.repos[repo] == nil then return end
@@ -426,47 +412,6 @@ H.update_git_head = function(root, bufs)
 
   H.cli_run(command, root, on_done)
 end
-
--- H.update_git_status = function(root, bufs)
---   --stylua: ignore
---   local command = H.jj_cmd({
---     -- NOTE: Use `--no-optional-locks` to reduce conflicts with other Git tasks
---     '--no-optional-locks', 'status',
---     '--verbose', '--untracked-files=all', '--ignored', '--porcelain', '-z',
---     '--',
---   })
---   local root_len, path_data = string.len(root), {}
---   for _, buf_id in ipairs(bufs) do
---     -- Use paths relative to the root as in `git status --porcelain` output
---     local rel_path = H.get_buf_realpath(buf_id):sub(root_len + 2)
---     table.insert(command, rel_path)
---     -- Completely not modified paths should be the only ones missing in the
---     -- output. Use this status as default.
---     path_data[rel_path] = { status = '  ', buf_id = buf_id }
---   end
---
---   local on_done = vim.schedule_wrap(function(code, out, err)
---     if code ~= 0 then return end
---     H.cli_err_notify(code, out, err)
---
---     -- Parse CLI output, which is separated by `\0` to not escape "bad" paths
---     for _, l in ipairs(vim.split(out, '\0')) do
---       local status, rel_path = string.match(l, '^(..) (.*)$')
---       if path_data[rel_path] ~= nil then path_data[rel_path].status = status end
---     end
---
---     -- Update data for all buffers
---     for _, data in pairs(path_data) do
---       local new_data = { status = data.status }
---       H.update_buf_data(data.buf_id, new_data)
---     end
---
---     -- Redraw statusline to have possible statusline component up to date
---     H.redrawstatus()
---   end)
---
---   H.cli_run(command, root, on_done)
--- end
 
 H.update_buf_data = function(buf_id, new_data)
   if not H.is_buf_enabled(buf_id) then return end
