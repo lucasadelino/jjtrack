@@ -151,7 +151,7 @@ end
 ---   - <repo> `(string)` - full path to '.git' directory.
 ---   - <root> `(string)` - full path to worktree root.
 ---   - <head> `(string)` - full commit of current HEAD.
----   - <head_name> `(string)` - short name of current HEAD (like "master").
+---   - <change_rest> `(string)` - short name of current HEAD (like "master").
 ---     For detached HEAD it is "HEAD".
 ---   - <status> `(string)` - two character file status as returned by `git status`.
 ---     (bisect, merge, etc.). Can be a combination of those separated by ",".
@@ -162,8 +162,8 @@ MiniJJ.get_buf_data = function(buf_id)
   return {
     repo = buf_cache.repo,
     root = buf_cache.root,
-    head = buf_cache.head,
-    head_name = buf_cache.head_name,
+    change_prefix = buf_cache.change_prefix,
+    change_rest = buf_cache.change_rest,
     -- status = buf_cache.status,
   }
 end
@@ -176,8 +176,8 @@ H.default_config = MiniJJ.config
 -- - <augroup> - identifier of augroup defining buffer behavior.
 -- - <repo> - path to buffer's repo ('.git' directory).
 -- - <root> - path to worktree root.
--- - <head> - full commit of `HEAD`.
--- - <head_name> - short name of `HEAD` (`'HEAD'` for detached head).
+-- - <change_prefix> - full commit of `HEAD`.
+-- - <change_rest> - short name of `HEAD` (`'HEAD'` for detached head).
 -- - <status> - current file status.
 H.cache = {}
 
@@ -415,7 +415,7 @@ H.update_git_head = function(root, bufs)
     -- local rest_truncated = rest:sub(1, 4 - #unique_prefix)
 
     -- Update data for all buffers from target `root`
-    local new_data = { head = unique_prefix, head_name = rest }
+    local new_data = { change_prefix = unique_prefix, change_rest = rest }
     for _, buf_id in ipairs(bufs) do
       H.update_buf_data(buf_id, new_data)
     end
@@ -478,10 +478,9 @@ H.update_buf_data = function(buf_id, new_data)
   vim.b[buf_id].minijj_summary = summary
 
   -- Format summary string
-  local head = summary.head_name or ''
-  -- head = head == 'HEAD' and summary.head:sub(1, 7) or head
+  local change_prefix = summary.change_rest or ''
 
-  local summary_string = head
+  local summary_string = change_prefix
   -- local status = summary.status or ''
   -- if status ~= '  ' and status ~= '' then summary_string = string.format('%s (%s)', head, status) end
   vim.b[buf_id].minijj_summary_string = summary_string
