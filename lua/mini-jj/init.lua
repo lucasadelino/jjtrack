@@ -255,7 +255,7 @@ H.setup_buf_behavior = function(buf_id)
       local buf_cache = H.cache[buf_id]
       if buf_cache == nil or buf_cache.root == nil then return end
       -- Don't upate repo/root as it is tracked in 'BufFilePost' autocommand
-      H.update_git_head(buf_cache.root, { buf_id })
+      H.update_jj_change(buf_cache.root, { buf_id })
       -- Don't upate status as it is tracked in file watcher
     end,
 
@@ -306,7 +306,7 @@ H.start_tracking = function(buf_id, path)
     H.setup_repo_watch(buf_id, repo)
 
     -- Immediately update buffer tracking data
-    H.update_git_head(root, { buf_id })
+    H.update_jj_change(root, { buf_id })
   end)
 
   H.cli_run(command, vim.fn.fnamemodify(path, ':h'), on_done)
@@ -370,11 +370,11 @@ H.on_repo_change = function(repo)
 
   -- Update Git data
   for root, bufs in pairs(root_bufs) do
-    H.update_git_head(root, bufs)
+    H.update_jj_change(root, bufs)
   end
 end
 
-H.update_git_head = function(root, bufs)
+H.update_jj_change = function(root, bufs)
   local command = H.jj_cmd({
     'log', '-r', '@', '--no-graph', '--ignore-working-copy',
     '--limit', '1', '--template',
