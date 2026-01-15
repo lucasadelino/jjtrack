@@ -370,8 +370,6 @@ H.on_repo_change = function(repo)
   -- Update Git data
   for root, bufs in pairs(root_bufs) do
     H.update_git_head(root, bufs)
-    -- Status could have also changed as it depends on the index
-    -- H.update_git_status(root, bufs)
   end
 end
 
@@ -379,6 +377,8 @@ H.update_git_head = function(root, bufs)
   local command = H.jj_cmd({
     'log', '-r', '@', '--no-graph', '--ignore-working-copy',
     '--limit', '1', '--template',
+    -- NOTE ideally we'd use change_id.prefix() to get the unique prefix,
+    -- but that doesn't work
     "pad_end(9,change_id.shortest(8))++change_id.shortest(8).rest()"
   })
 
@@ -398,7 +398,6 @@ H.update_git_head = function(root, bufs)
 
     local rest = words[2]
     local unique_prefix = words[1]:sub(1, 8 - #rest)
-    -- local rest_truncated = rest:sub(1, 4 - #unique_prefix)
 
     -- Update data for all buffers from target `root`
     local new_data = { change_prefix = unique_prefix, change_rest = rest }
