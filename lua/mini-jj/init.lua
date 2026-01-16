@@ -298,7 +298,8 @@ H.start_tracking = function(buf_id, path)
     -- Update buf data
     local root = out
     if root == nil then return H.notify('No initial data for buffer ' .. buf_id, 'WARN') end
-    -- local repo = root .. '/.jj'
+    -- NOTE: the Git backend is the only one available currently, so this is
+    -- fine for now (maybe for ever?)
     local repo = root .. '/.git'
     H.update_buf_data(buf_id, { repo = repo, root = root })
 
@@ -382,6 +383,7 @@ H.update_jj_change = function(root, bufs)
     '--limit', '1', '--template',
     -- NOTE ideally we'd use change_id.prefix() to get the unique prefix,
     -- but that doesn't work
+    -- TODO: make the length configurable
     "pad_end(9,change_id.shortest(8))++change_id.shortest(8).rest()"
   })
 
