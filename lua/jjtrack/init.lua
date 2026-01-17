@@ -426,11 +426,10 @@ H.update_buf_data = function(buf_id, new_data)
   vim.b[buf_id].jjtrack_summary = summary
 
   -- Format summary string
-  local change_prefix = summary.change_rest or ''
+  local change_prefix = summary.change_prefix or ''
+  local change_rest = summary.change_rest or ''
 
-  local summary_string = change_prefix
-  -- local status = summary.status or ''
-  -- if status ~= '  ' and status ~= '' then summary_string = string.format('%s (%s)', head, status) end
+  local summary_string = change_prefix .. change_rest
   vim.b[buf_id].jjtrack_summary_string = summary_string
 
   -- Trigger dedicated event with target current buffer (for proper `data.buf`)
