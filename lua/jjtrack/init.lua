@@ -1,23 +1,21 @@
 -- Module definition ==========================================================
-local MiniJJ = {}
+local JJTrack = {}
 local H = {}
 
 --- Module setup
 ---
---- Besides general side effects (see |mini.nvim|), it also:
 --- - Sets up auto enabling in every normal buffer for an actual file on disk.
---- - Creates |:Git| command.
 ---
----@param config table|nil Module config table. See |MiniJJ.config|.
+---@param config table|nil Module config table. See |JJTrack.config|.
 ---
 ---@usage >lua
----   require('mini.git').setup() -- use default config
+---   require('jjtrack').setup() -- use default config
 ---   -- OR
----   require('mini.git').setup({}) -- replace {} with your config table
+---   require('jjtrack').setup({}) -- replace {} with your config table
 --- <
-MiniJJ.setup = function(config)
+JJTrack.setup = function(config)
   -- Export module
-  _G.MiniJJ = MiniJJ
+  _G.JJTrack = JJTrack
 
   -- Setup config
   config = H.setup_config(config)
@@ -55,9 +53,9 @@ end
 ---
 --- `command.split` defines default split direction for |:Git| command output. Can be
 --- one of "horizontal", "vertical", "tab", or "auto". Value "auto" uses |:vertical|
---- if only 'mini.git' buffers are shown in the tabpage and |:tab| otherwise.
+--- if only 'jjtrack' buffers are shown in the tabpage and |:tab| otherwise.
 --- Default: "auto".
-MiniJJ.config = {
+JJTrack.config = {
   -- General CLI execution
   job = {
     -- Path to JJ executable
@@ -74,22 +72,22 @@ MiniJJ.config = {
 ---
 --- Tracking is done by reacting to changes in file content or file's repository
 --- in the form of keeping buffer data up to date. The data can be used via:
---- - |MiniJJ.get_buf_data()|. See its help for a list of actually tracked data.
---- - `vim.b.minijj_summary` (table) and `vim.b.minijj_summary_string` (string)
+--- - |JJTrack.get_buf_data()|. See its help for a list of actually tracked data.
+--- - `vim.b.jjtrack_summary` (table) and `vim.b.jjtrack_summary_string` (string)
 ---   buffer-local variables which are more suitable for statusline.
----   `vim.b.minijj_summary_string` contains information about HEAD, file status,
----   and in progress action (see |MiniJJ.get_buf_data()| for more details).
----   See |MiniJJ-examples| for how it can be tweaked and used in statusline.
+---   `vim.b.jjtrack_summary_string` contains information about HEAD, file status,
+---   and in progress action (see |JJTrack.get_buf_data()| for more details).
+---   See |JJTrack-examples| for how it can be tweaked and used in statusline.
 ---
 --- Note: this function is called automatically for all new normal buffers.
 --- Use it explicitly if buffer was disabled.
 ---
---- `User` event `MiniJJUpdated` is triggered whenever tracking data is updated.
---- Note that not all data listed in |MiniJJ.get_buf_data()| can be present (yet)
+--- `User` event `JJTrackUpdated` is triggered whenever tracking data is updated.
+--- Note that not all data listed in |JJTrack.get_buf_data()| can be present (yet)
 --- at the point of event being triggered.
 ---
 ---@param buf_id __git_buf_id
-MiniJJ.enable = function(buf_id)
+JJTrack.enable = function(buf_id)
   buf_id = H.validate_buf_id(buf_id)
 
   -- Don't enable more than once
@@ -108,7 +106,7 @@ end
 --- Disable JJ tracking in buffer
 ---
 ---@param buf_id __git_buf_id
-MiniJJ.disable = function(buf_id)
+JJTrack.disable = function(buf_id)
   buf_id = H.validate_buf_id(buf_id)
 
   local buf_cache = H.cache[buf_id]
@@ -117,7 +115,7 @@ MiniJJ.disable = function(buf_id)
 
   -- Cleanup
   pcall(vim.api.nvim_del_augroup_by_id, buf_cache.augroup)
-  vim.b[buf_id].minijj_summary, vim.b[buf_id].minijj_summary_string = nil, nil
+  vim.b[buf_id].jjtrack_summary, vim.b[buf_id].jjtrack_summary_string = nil, nil
 
   -- - Unregister buffer from repo watching with possibly more cleanup
   local repo = buf_cache.repo
@@ -134,10 +132,10 @@ end
 --- Enable if disabled, disable if enabled.
 ---
 ---@param buf_id __git_buf_id
-MiniJJ.toggle = function(buf_id)
+JJTrack.toggle = function(buf_id)
   buf_id = H.validate_buf_id(buf_id)
-  if H.is_buf_enabled(buf_id) then return MiniJJ.disable(buf_id) end
-  return MiniJJ.enable(buf_id)
+  if H.is_buf_enabled(buf_id) then return JJTrack.disable(buf_id) end
+  return JJTrack.enable(buf_id)
 end
 
 --- Get buffer data
@@ -154,7 +152,7 @@ end
 ---     For detached HEAD it is "HEAD".
 ---   - <status> `(string)` - two character file status as returned by `git status`.
 ---     (bisect, merge, etc.). Can be a combination of those separated by ",".
-MiniJJ.get_buf_data = function(buf_id)
+JJTrack.get_buf_data = function(buf_id)
   buf_id = H.validate_buf_id(buf_id)
   local buf_cache = H.cache[buf_id]
   if buf_cache == nil then return nil end
@@ -169,7 +167,7 @@ end
 
 -- Helper data ================================================================
 -- Module default config
-H.default_config = MiniJJ.config
+H.default_config = JJTrack.config
 
 -- Cache per enabled buffer. Values are tables with fields:
 -- - <augroup> - identifier of augroup defining buffer behavior.
@@ -203,10 +201,10 @@ H.setup_config = function(config)
   return config
 end
 
-H.apply_config = function(config) MiniJJ.config = config end
+H.apply_config = function(config) JJTrack.config = config end
 
 H.create_autocommands = function()
-  local gr = vim.api.nvim_create_augroup('MiniJJ', {})
+  local gr = vim.api.nvim_create_augroup('JJTrack', {})
 
   local au = function(event, pattern, callback, desc)
     vim.api.nvim_create_autocmd(event, { group = gr, pattern = pattern, callback = callback, desc = desc })
@@ -217,13 +215,13 @@ H.create_autocommands = function()
   au('BufEnter', '*', H.auto_enable, 'Enable JJ tracking')
 end
 
-H.is_disabled = function(buf_id) return vim.g.minijj_disable == true or vim.b[buf_id or 0].minijj_disable == true end
+H.is_disabled = function(buf_id) return vim.g.jjtrack_disable == true or vim.b[buf_id or 0].jjtrack_disable == true end
 
 -- Autocommands ---------------------------------------------------------------
 H.auto_enable = vim.schedule_wrap(function(data)
   local buf = data.buf
   if not (vim.api.nvim_buf_is_loaded(buf) and vim.bo[buf].buftype == '' and vim.bo[buf].buflisted) then return end
-  MiniJJ.enable(data.buf)
+  JJTrack.enable(data.buf)
 end)
 
 -- Command --------------------------------------------------------------------
@@ -245,7 +243,7 @@ end
 H.is_buf_enabled = function(buf_id) return H.cache[buf_id] ~= nil and vim.api.nvim_buf_is_valid(buf_id) end
 
 H.setup_buf_behavior = function(buf_id)
-  local augroup = vim.api.nvim_create_augroup('MiniJJBuffer' .. buf_id, { clear = true })
+  local augroup = vim.api.nvim_create_augroup('JJTrackBuffer' .. buf_id, { clear = true })
   H.cache[buf_id].augroup = augroup
 
   vim.api.nvim_buf_attach(buf_id, false, {
@@ -262,19 +260,19 @@ H.setup_buf_behavior = function(buf_id)
     -- Called when buffer is unloaded from memory (`:h nvim_buf_detach_event`),
     -- **including** `:edit` command. Together with auto enabling it makes
     -- `:edit` command serve as "restart".
-    on_detach = function() MiniJJ.disable(buf_id) end,
+    on_detach = function() JJTrack.disable(buf_id) end,
   })
 
   local reset_if_enabled = vim.schedule_wrap(function(data)
     if not H.is_buf_enabled(data.buf) then return end
-    MiniJJ.disable(data.buf)
-    MiniJJ.enable(data.buf)
+    JJTrack.disable(data.buf)
+    JJTrack.enable(data.buf)
   end)
   local bufrename_opts = { group = augroup, buffer = buf_id, callback = reset_if_enabled, desc = 'Reset on rename' }
   -- NOTE: `BufFilePost` does not look like a proper event, but it (yet) works
   vim.api.nvim_create_autocmd('BufFilePost', bufrename_opts)
 
-  local buf_disable = function() MiniJJ.disable(buf_id) end
+  local buf_disable = function() JJTrack.disable(buf_id) end
   local bufdelete_opts = { group = augroup, buffer = buf_id, callback = buf_disable, desc = 'Disable on delete' }
   vim.api.nvim_create_autocmd('BufDelete', bufdelete_opts)
 end
@@ -286,7 +284,7 @@ H.start_tracking = function(buf_id, path)
   -- If path is not in JJ, disable buffer but make sure that it will not try
   -- to re-attach until buffer is properly disabled
   local on_not_in_git = function()
-    if H.is_buf_enabled(buf_id) then MiniJJ.disable(buf_id) end
+    if H.is_buf_enabled(buf_id) then JJTrack.disable(buf_id) end
     H.cache[buf_id] = {}
   end
 
@@ -367,7 +365,7 @@ H.on_repo_change = function(repo)
       root_bufs[root] = bufs
     else
       repo_bufs[buf_id] = nil
-      MiniJJ.disable(buf_id)
+      JJTrack.disable(buf_id)
     end
   end
 
@@ -420,11 +418,11 @@ end
 H.update_buf_data = function(buf_id, new_data)
   if not H.is_buf_enabled(buf_id) then return end
 
-  local summary = vim.b[buf_id].minijj_summary or {}
+  local summary = vim.b[buf_id].jjtrack_summary or {}
   for key, val in pairs(new_data) do
     H.cache[buf_id][key], summary[key] = val, val
   end
-  vim.b[buf_id].minijj_summary = summary
+  vim.b[buf_id].jjtrack_summary = summary
 
   -- Format summary string
   local change_prefix = summary.change_rest or ''
@@ -432,17 +430,17 @@ H.update_buf_data = function(buf_id, new_data)
   local summary_string = change_prefix
   -- local status = summary.status or ''
   -- if status ~= '  ' and status ~= '' then summary_string = string.format('%s (%s)', head, status) end
-  vim.b[buf_id].minijj_summary_string = summary_string
+  vim.b[buf_id].jjtrack_summary_string = summary_string
 
   -- Trigger dedicated event with target current buffer (for proper `data.buf`)
-  vim.api.nvim_buf_call(buf_id, function() H.trigger_event('MiniJJUpdated') end)
+  vim.api.nvim_buf_call(buf_id, function() H.trigger_event('JJTrackUpdated') end)
 end
 
 -- CLI ------------------------------------------------------------------------
 H.jj_cmd = function(args)
   -- Use '-c gc.auto=0' to disable `stderr` "Auto packing..." messages
-  -- return { MiniJJ.config.job.jj_executable, '-c', 'gc.auto=0', unpack(args) }
-  return { MiniJJ.config.job.jj_executable, unpack(args) }
+  -- return { JJTrack.config.job.jj_executable, '-c', 'gc.auto=0', unpack(args) }
+  return { JJTrack.config.job.jj_executable, unpack(args) }
 end
 
 H.cli_run = function(command, cwd, on_done, opts)
@@ -480,9 +478,9 @@ H.cli_run = function(command, cwd, on_done, opts)
     if H.skip_timeout or not process:is_active() then return end
     H.notify('PROCESS REACHED TIMEOUT', 'WARN')
     on_exit(1)
-  end, MiniJJ.config.job.timeout)
+  end, JJTrack.config.job.timeout)
 
-  if is_sync then vim.wait(MiniJJ.config.job.timeout + 10, function() return is_done end, 1) end
+  if is_sync then vim.wait(JJTrack.config.job.timeout + 10, function() return is_done end, 1) end
   return res
 end
 
@@ -505,14 +503,14 @@ H.cli_err_notify = function(code, out, err)
 end
 
 -- Utilities ------------------------------------------------------------------
-H.error = function(msg) error('(mini.jj) ' .. msg, 0) end
+H.error = function(msg) error('(jjtrack) ' .. msg, 0) end
 
 H.check_type = function(name, val, ref, allow_nil)
   if type(val) == ref or (ref == 'callable' and vim.is_callable(val)) or (allow_nil and val == nil) then return end
   H.error(string.format('`%s` should be %s, not %s', name, ref, type(val)))
 end
 
-H.notify = function(msg, level_name) vim.notify('(mini.jj) ' .. msg, vim.log.levels[level_name]) end
+H.notify = function(msg, level_name) vim.notify('(jjtrack) ' .. msg, vim.log.levels[level_name]) end
 
 H.trigger_event = function(event_name, data) vim.api.nvim_exec_autocmds('User', { pattern = event_name, data = data }) end
 
@@ -522,4 +520,4 @@ H.get_buf_realpath = function(buf_id) return vim.loop.fs_realpath(vim.api.nvim_b
 H.redrawstatus = function() vim.cmd('redrawstatus') end
 if vim.api.nvim__redraw ~= nil then H.redrawstatus = function() vim.api.nvim__redraw({ statusline = true }) end end
 
-return MiniJJ
+return JJTrack
