@@ -153,6 +153,15 @@ JJTrack.get_buf_data = function(buf_id)
     root = buf_cache.root,
     change_prefix = buf_cache.change_prefix,
     change_rest = buf_cache.change_rest,
+    commit_prefix = buf_cache.commit_prefix,
+    commit_rest = buf_cache.commit_rest,
+    conflict = buf_cache.conflict,
+    divergent = buf_cache.divergent,
+    empty = buf_cache.empty,
+    hidden = buf_cache.hidden,
+    immutable = buf_cache.immutable,
+    mine = buf_cache.mine,
+    root_commit = buf_cache.root_commit
   }
 end
 
@@ -370,7 +379,7 @@ H.update_jj_change = function(root, bufs)
     'log', '-r', '@', '--no-graph', '--ignore-working-copy',
     '--limit', '1', '--template',
     -- TODO: make the length configurable
-    "separate(' ', change_id.shortest(8).prefix(), change_id.shortest(8).rest())"
+    "separate(' ', change_id.shortest(8).prefix(), change_id.shortest(8).rest(), commit_id.shortest(8).prefix(), commit_id.shortest(8).rest(), conflict, divergent, empty, hidden, immutable, mine, root, bookmarks )"
   })
 
   local on_done = vim.schedule_wrap(function(code, out, err)
@@ -389,12 +398,30 @@ H.update_jj_change = function(root, bufs)
 
     local rest = words[2]
     local unique_prefix = words[1]
+    local commit_rest = words[4]
+    local commit_prefix = words[3]
+    local conflict  = words[5]
+    local divergent  = words[6]
+    local empty  = words[7]
+    local hidden  = words[8]
+    local immutable  = words[9]
+    local mine  = words[10]
+    local root_commit = words[11]
 
 
     -- Update data for all buffers from target `root`
     local new_data = {
       change_prefix = unique_prefix,
       change_rest = rest,
+      commit_prefix = commit_prefix,
+      commit_rest = commit_rest,
+      conflict = conflict,
+      divergent = divergent,
+      empty = empty,
+      hidden = hidden,
+      immutable = immutable,
+      mine = mine,
+      root_commit = root_commit,
     }
 
     for _, buf_id in ipairs(bufs) do
