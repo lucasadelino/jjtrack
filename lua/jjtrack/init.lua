@@ -153,7 +153,6 @@ JJTrack.get_buf_data = function(buf_id)
     root = buf_cache.root,
     change_prefix = buf_cache.change_prefix,
     change_rest = buf_cache.change_rest,
-    -- status = buf_cache.status,
   }
 end
 
@@ -370,10 +369,8 @@ H.update_jj_change = function(root, bufs)
   local command = H.jj_cmd({
     'log', '-r', '@', '--no-graph', '--ignore-working-copy',
     '--limit', '1', '--template',
-    -- NOTE ideally we'd use change_id.prefix() to get the unique prefix,
-    -- but that doesn't work
     -- TODO: make the length configurable
-    "pad_end(9,change_id.shortest(8))++change_id.shortest(8).rest()"
+    "separate(' ', change_id.shortest(8).prefix(), change_id.shortest(8).rest())"
   })
 
   local on_done = vim.schedule_wrap(function(code, out, err)
@@ -391,10 +388,15 @@ H.update_jj_change = function(root, bufs)
     end
 
     local rest = words[2]
-    local unique_prefix = words[1]:sub(1, 8 - #rest)
+    local unique_prefix = words[1]
+
 
     -- Update data for all buffers from target `root`
-    local new_data = { change_prefix = unique_prefix, change_rest = rest }
+    local new_data = {
+      change_prefix = unique_prefix,
+      change_rest = rest,
+    }
+
     for _, buf_id in ipairs(bufs) do
       H.update_buf_data(buf_id, new_data)
     end
