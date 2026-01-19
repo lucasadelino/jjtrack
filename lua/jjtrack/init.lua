@@ -161,7 +161,8 @@ JJTrack.get_buf_data = function(buf_id)
     hidden = buf_cache.hidden,
     immutable = buf_cache.immutable,
     mine = buf_cache.mine,
-    root_commit = buf_cache.root_commit
+    root_commit = buf_cache.root_commit,
+    bookmarks = buf_cache.bookmarks,
   }
 end
 
@@ -379,6 +380,7 @@ H.update_jj_change = function(root, bufs)
     'log', '-r', '@', '--no-graph', '--ignore-working-copy',
     '--limit', '1', '--template',
     -- TODO: make the length configurable
+    -- TODO: str_to_bool function
     "separate(' ', change_id.shortest(8).prefix(), change_id.shortest(8).rest(), commit_id.shortest(8).prefix(), commit_id.shortest(8).rest(), conflict, divergent, empty, hidden, immutable, mine, root, bookmarks )"
   })
 
@@ -407,7 +409,7 @@ H.update_jj_change = function(root, bufs)
     local immutable  = words[9]
     local mine  = words[10]
     local root_commit = words[11]
-
+    local bookmarks = words[12] ~= nil and vim.list_slice(words, 12) or {}
 
     -- Update data for all buffers from target `root`
     local new_data = {
@@ -422,6 +424,7 @@ H.update_jj_change = function(root, bufs)
       immutable = immutable,
       mine = mine,
       root_commit = root_commit,
+      bookmarks = bookmarks,
     }
 
     for _, buf_id in ipairs(bufs) do
