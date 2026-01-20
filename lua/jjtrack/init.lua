@@ -486,8 +486,6 @@ end
 
 -- CLI ------------------------------------------------------------------------
 H.jj_cmd = function(args)
-  -- Use '-c gc.auto=0' to disable `stderr` "Auto packing..." messages
-  -- return { JJTrack.config.job.jj_executable, '-c', 'gc.auto=0', unpack(args) }
   return { JJTrack.config.job.jj_executable, unpack(args) }
 end
 
