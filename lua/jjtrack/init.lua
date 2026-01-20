@@ -1,3 +1,9 @@
+-- JJTrack: A Neovim plugin to track Jujutsu data in buffer-local variables.
+--
+-- Most of the code in this file comes from
+-- [MiniGit](https://github.com/nvim-mini/mini-git),
+-- used here under the MIT License. (Copyright (c) 2021 Evgeni Chasnovski)
+--
 -- Module definition ==========================================================
 local JJTrack = {}
 local H = {}
