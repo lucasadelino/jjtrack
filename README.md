@@ -46,7 +46,7 @@ TLDR: Use the `vim.b.jjtrack_summary` variable.
 
 As mentioned previously, the data-fetching logic of this plugin is pretty much
 identical to mini.git. The gist of it is that the plugin checks whether the
-current buffer belongs to a Git repo. If it does, the plugin stars to
+current buffer belongs to a Git repo. If it does, the plugin starts to
 automatically fetch JJ data after every change to the repo's `.git` directory
 (with a configurable debounce), which it saves to the `vim.b.jjtrack_summary`
 variable. This variable is a table, containing the JJ commit properties listed
